@@ -1,0 +1,210 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Vectorising a portion of the global forest cover map
+========================================================
+
+The data can be obtained from here.
+http://earthenginepartners.appspot.com/science-2013-global-forest
+
+
+Load the packages.
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+library(rgdal)
+library(rgeos)
+library(raster)
+library(dismo)
+
+```
+
+
+```{r,eval=FALSE}
+system ("gdalinfo forest2000.tif")
+system ("gdalinfo loss.tif")
+```
+
+If you see that your layer is in fact in EPSG then you need to run the lines below.
+
+```{r,eval=TRUE}
+system ("gdalwarp -t_srs EPSG:3857 forest2000.tif forest2000_3857.tif")
+system ("gdalwarp -t_srs EPSG:3857 loss.tif loss_3857.tif")
+```
+
+
+
+## Load the data
+
+```{r}
+
+forest2000<-raster("forest2000_3857.tif")
+loss<-raster("loss_3857.tif")
+mp<-gmap(forest2000,type="satellite")
+plot(mp)
+axis(1)
+axis(2)
+box()
+grid()
+
+```
+
+## Turn into binary forest-non forest maps
+
+You can change the cut off point here. I have set it to 50%
+
+```{r}
+percent_cover= 80
+
+forest2000<-1*(forest2000>=percent_cover)
+nonforest2000<-1-forest2000
+mask<-1-loss
+forest2012<-forest2000*mask
+nonforest2012<-1-forest2012
+
+```
+
+
+## Set the minimum size for the fragments.
+
+### CHANGE THIS IF YOU WANT, BUT BE CAREFUL NOT TO MAKE TOO MANY SMALL AREAS. 
+
+The size is in hectares
+One hectare is around 9 pixels in the original image
+
+```{r}
+
+min_size<-4
+
+```
+
+
+```{r,eval=T}
+
+plot(forest2000)
+plot(nonforest2000)
+plot(forest2012)
+plot(nonforest2012)
+
+```
+
+
+
+```{r}
+
+totalarea<-(forest2000@extent@xmax-forest2000@extent@xmin)*(forest2000@extent@ymax-forest2000@extent@ymin)/10000
+totalarea
+
+```
+## Vectorisation function
+
+
+```{r,message=FALSE,warning=FALSE}
+vect<-function(){
+  id <- values(cl)
+crds <- coordinates(cl)
+crds <- crds[!is.na(id), ]
+id <- id[!is.na(id)]
+crds <- data.frame(id, crds)
+coordinates(crds) <- ~x + y
+buf1 <- gBuffer(crds, width = 50, byid = T)
+buf2 <- gUnaryUnion(buf1, id)
+buf3 <- gBuffer(buf2, width = -50, byid = T)
+frags<-buf3[gArea(buf3,byid=T)>min_size*10000]
+area<-gArea(frags,byid=T)
+edge<-gBoundary(frags,byid=T)
+perims<-gLength(edge,byid=T)
+d<-data.frame(id=names(frags),area,perims)
+d$shape<-d$perims/(2*pi*sqrt(d$area/pi))
+d$area<-d$area/10000
+d<-d[order(-d$area),]
+d$cumarea<-cumsum(d$area)
+d$ptot<-d$area/totalarea*100
+d$parea<-d$area/sum(d$area)*100
+frags<-SpatialPolygonsDataFrame(frags,data=d,match.ID=FALSE)
+proj4string(frags)<-CRS("+init=epsg:3857")
+frags
+  
+}
+
+
+
+```
+
+## Vectorise forest 2000 area
+
+```{r,message=FALSE,warning=FALSE}
+cl<-clump(forest2000)
+frags<-vect()
+plot(frags,col="darkgreen")
+axis(1)
+axis(2)
+box()
+grid()
+frags@data
+writeOGR(frags,dsn="shapefiles","forest2000",driver="ESRI Shapefile",over=TRUE)
+```
+
+
+```{r}
+plot(mp)
+plot(frags, add = T, border = "red", col = "transparent")
+
+```
+
+## Vectorise forest 2012
+
+
+
+```{r,message=FALSE,warning=FALSE}
+
+cl<-clump(forest2012)
+frags<-vect()
+plot(frags,col="darkgreen")
+axis(1)
+axis(2)
+box()
+grid()
+frags@data
+writeOGR(frags,dsn="shapefiles","forest2012",driver="ESRI Shapefile",over=TRUE)
+
+```
+
+```{r}
+plot(mp)
+plot(frags, add = T, border = "red", col = "transparent")
+```
+
+## Vectorise non forest 2000
+
+```{r,message=FALSE,warning=FALSE}
+cl<-clump(nonforest2000)
+frags<-vect()
+plot(frags,col="darkgreen")
+axis(1)
+axis(2)
+box()
+grid()
+frags@data
+writeOGR(frags,dsn="shapefiles","nonforest2000",driver="ESRI Shapefile",over=TRUE)
+
+```
+
+## Vectorise non forest 2012
+
+```{r,message=FALSE,warning=FALSE}
+
+cl<-clump(nonforest2012)
+frags<-vect()
+plot(frags,col="darkgreen")
+axis(1)
+axis(2)
+box()
+grid()
+frags@data
+writeOGR(frags,dsn="shapefiles","nonforest2012",driver="ESRI Shapefile",over=TRUE)
+
+```
+
+

@@ -1,0 +1,97 @@
+Core area analysis
+============================================
+
+
+Load the packages.
+
+```{r,warning=FALSE,message=FALSE}
+library(rgdal)
+library(rgeos)
+library(raster)
+
+```
+
+## Set the file to work with
+
+The path to the working directory will not need to be set as long as the file is in the directory below the shapefile directory containing the results from vectorisation.
+
+The code contains lines for each of the files. To change the file you are working with comment out the rest by adding a hash # to the start of the line. Remove the hash from the one you want. Make sure that only one line is uncommented.
+
+```{r}
+file_name<-"forest2012"
+#file_name<-"forest2000"
+#file_name<-"nonforest2000"
+#file_name<-"nonforest2012"
+```
+
+## Set the bufffer width
+
+Change this for each buffer width you want to run. If it is set so high that there are no core areas at all then the code will fail on line 49.
+
+
+```{r}
+buffer_width = 300
+```
+
+
+## Load the data
+
+```{r}
+frags<-readOGR("shapefiles",file_name)
+str(frags@bbox)
+totalarea<-(frags@bbox[1,2]-frags@bbox[1,1])*(frags@bbox[2,2]-frags@bbox[2,1])/10000
+totalarea
+
+```
+
+
+
+```{r}
+
+cores<-gBuffer(frags,width=-buffer_width,byid=TRUE)
+
+plot(frags,col="darkgreen")
+plot(cores,col="red",add=T)
+axis(1)
+axis(2)
+box()
+grid()
+```
+
+Percent of total area that is core
+
+```{r}
+100*(gArea(cores)/10000)/totalarea
+```
+
+
+```{r}
+cores$c_area<-gArea(cores,byid=T)/10000
+cores$corepercent<-(cores$c_area/cores$area)*100
+cores$edgepercent<-100-cores$corepercent
+cores$ncores <- unlist(lapply(lapply( cores@polygons , slot , "Polygons" ),length))
+
+frags@data<-merge(frags@data,cores@data[,-c(2:4)],by="id",all.x=TRUE)
+frags@data[is.na(frags@data)]<-0
+frags@data[,-1]<-round(frags@data[,-1],2)
+d<-cores@data
+
+d<-d[order(d$area,decreasing=T),]
+head(d)
+out_file<-paste("results",file_name,"buffer",buffer_width,".csv",sep="_")
+out_file
+write.csv(d,out_file)
+```
+
+```{r,warning=FALSE,message=FALSE}
+proj4string(cores)<-CRS("+init=epsg:3857")
+shape_file<-paste(file_name,"cores",buffer_width,sep="_")
+writeOGR(cores,dsn="shapefiles",shape_file,driver="ESRI Shapefile",over=TRUE)
+
+proj4string(frags)<-CRS("+init=epsg:3857")
+shape_file<-paste(file_name,"edge_analysis",buffer_width,sep="_")
+writeOGR(frags,dsn="shapefiles",shape_file,driver="ESRI Shapefile",over=TRUE)
+
+```
+
+

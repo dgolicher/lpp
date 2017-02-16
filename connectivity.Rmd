@@ -1,0 +1,81 @@
+## Instructions
+
+This script will run a network analysis by measuring the minimum distance between the geomestries of each fragment and forming a "distance matrix".
+
+The size of the distance matrix is the square of the number of patches and increases quickly as a result. If you have 10 patches the distance matrix  will be 10 x 10 = 100. If you have 1000 patches then R would have to run one million calculations and store the results. This could take a very long time. So check the number of patches first.
+
+
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+#install.packages(c("rgdal","rgeos","raster","spdep"))
+
+library(rgdal)
+library(rgeos)
+library(raster)
+library(spdep)
+
+```
+
+## Load the data and build the matrix
+
+Change the file that you want to run by commenting out one (adding a # at the start of the line) and removing the comment from the file you want.
+
+
+```{r,cache=TRUE,echo=FALSE}
+file_name<-"forest2012"
+#file_name<-"forest2000"
+#file_name<-"nonforest2000"
+#file_name<-"nonforest2012"
+
+
+frags<-readOGR("shapefiles",file_name)
+if (length(frags) >=200){
+  cat("Too many fragments to run")
+      
+  }
+if (length(frags) < 200)
+    {
+g<-gDistance(frags, frags, byid = TRUE)
+g1<-g
+ }
+
+
+```
+
+
+## Set the connectivity distance
+
+Change the distance in meters shown below to run another anlysis. So if you want to see the results for 500 meters change it to "connect_distance = 500""
+
+
+```{r connectivity,echo=FALSE}
+
+connect_distance = 100
+flname<-paste(file_name,connect_distance,"connectivity.txt",sep="_")
+if (length(frags) < 200)
+{
+g1[g1>connect_distance]<-0
+nbs<-mat2listw(g1) 
+plot(frags,col="darkgreen")
+box();grid();axis(1);axis(2)
+
+plot(nbs,coords=coordinates(frags),add=T,col="red")
+print(paste("Connectivity distance =",connect_distance))
+summary(nbs,zero.policy=T)
+sink(flname)
+print(paste("Connectivity distance =",connect_distance))
+summary(nbs,zero.policy=T)
+sink()
+}
+```
+
+The figure shows the connections between fragments as a network between the centroids of each fragment. However this is based on the minimum edge to edge distance, so the length of the lines should not be taken as representing the length of the connection distance. 
+The summary of the network.
+
+
+```{r}
+
+plot(hclust(as.dist(g)))
+
+```
+
