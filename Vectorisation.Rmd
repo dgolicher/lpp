@@ -22,11 +22,13 @@ library(dismo)
 
 
 ```{r,eval=FALSE}
+## These lines are for troubleshooting if a student has a problem
+## Not run normally
 system ("gdalinfo forest2000.tif")
 system ("gdalinfo loss.tif")
 ```
 
-If you see that your layer is in fact in EPSG then you need to run the lines below.
+These lines should reproject if the layer is in the wrong CRS.
 
 ```{r,eval=TRUE}
 system ("gdalwarp -t_srs EPSG:3857 forest2000.tif forest2000_3857.tif")
@@ -52,10 +54,15 @@ grid()
 
 ## Turn into binary forest-non forest maps
 
-You can change the cut off point here. I have set it to 50%
+You may want to change the cut off point here. I have set it to 80%
 
 ```{r}
 percent_cover= 80
+```
+
+This is good for moist forest, but you may need a lower value for dry forest.
+
+```{r}
 
 forest2000<-1*(forest2000>=percent_cover)
 nonforest2000<-1-forest2000
@@ -68,7 +75,7 @@ nonforest2012<-1-forest2012
 
 ## Set the minimum size for the fragments.
 
-### CHANGE THIS IF YOU WANT, BUT BE CAREFUL NOT TO MAKE TOO MANY SMALL AREAS. 
+### You can also change this, but don't set it too small
 
 The size is in hectares
 One hectare is around 9 pixels in the original image
@@ -79,6 +86,7 @@ min_size<-4
 
 ```
 
+## PLot the layers
 
 ```{r,eval=T}
 
@@ -89,7 +97,7 @@ plot(nonforest2012)
 
 ```
 
-
+## Calculate the total area in hectares
 
 ```{r}
 
@@ -142,8 +150,16 @@ axis(1)
 axis(2)
 box()
 grid()
-frags@data
+
 writeOGR(frags,dsn="shapefiles","forest2000",driver="ESRI Shapefile",over=TRUE)
+```
+
+## Tabular data 
+
+The table includes the percentage of the total study site area for each fragment and the percentage of the landscape class. This is particularly useful when looking at the largest patch.
+
+```{r}
+frags@data
 ```
 
 
