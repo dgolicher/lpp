@@ -126,7 +126,7 @@ perims<-gLength(edge,byid=T)
 d<-data.frame(id=names(frags),area,perims)
 d$shape<-d$perims/(2*pi*sqrt(d$area/pi))
 d$area<-d$area/10000
-d<-d[order(-d$area),]
+
 d$cumarea<-cumsum(d$area)
 d$ptot<-d$area/totalarea*100
 d$parea<-d$area/sum(d$area)*100
