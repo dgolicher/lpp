@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 Core area analysis
 ============================================
 
@@ -8,6 +11,7 @@ Load the packages.
 library(rgdal)
 library(rgeos)
 library(raster)
+library(rmapshaper)
 
 ```
 
@@ -30,13 +34,14 @@ Change this for each buffer width you want to run. If it is set so high that the
 
 
 ```{r}
-buffer_width = 300
+buffer_width = 30
 ```
 
 
 ## Load the data
 
 ```{r}
+
 frags<-readOGR("shapefiles",file_name)
 str(frags@bbox)
 totalarea<-(frags@bbox[1,2]-frags@bbox[1,1])*(frags@bbox[2,2]-frags@bbox[2,1])/10000
@@ -85,6 +90,8 @@ write.csv(d,out_file)
 
 ```{r,warning=FALSE,message=FALSE}
 proj4string(cores)<-CRS("+init=epsg:3857")
+
+#cores<-ms_explode(cores, force_FC = TRUE)
 shape_file<-paste(file_name,"cores",buffer_width,sep="_")
 writeOGR(cores,dsn="shapefiles",shape_file,driver="ESRI Shapefile",over=TRUE)
 
