@@ -1,0 +1,50 @@
+---
+title: "Leaflet map"
+author: "Duncan Golicher"
+date: "14 March 2017"
+output: html_document
+---
+
+---
+title: "Leaflet_map"
+output: html_document
+---
+
+## Position of study site.
+
+Zoom out to appropriate scale to show the position of your study site with the mini map in the corner as a guide. You can select a range of base maps using the icon in the top corner. The default Open street map should be the best. You can take a screenshot and embed it in your report to show where you were working. This does not count as one of the figures.
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE}
+
+library(rgdal)
+library(rgeos)
+library(raster)
+library(dismo)
+library(leaflet)
+
+d<-data.frame(x=rnorm(100,-37.2,0.01),y=rnorm(100,174.8,0.01),pop=rep("a",times=100))
+
+forest2000<-raster("forest2000.tif")
+ls<-raster("loss.tif")
+ls[ls<1]<-NA
+
+pal<-colorBin("Greens", domain = 0:100,alpha=0.2)
+pal2<-colorBin("Reds", domain = 0:1,na.color=NA,alpha=0.2)
+m <- leaflet() %>%
+   addProviderTiles("Esri.WorldShadedRelief", group = "Shaded relief",options = providerTileOptions(opacity =1))%>%
+  addTiles(group = "OSM") %>%
+  addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
+  addProviderTiles("Esri.WorldImagery", group = "Satellite") %>%
+ 
+  addRasterImage(forest2000,colors=pal,group="Forest 2000") %>%
+  addRasterImage(ls,colors=pal2,group="Loss") %>%
+  addMiniMap() %>%
+  addScaleBar() %>%
+  addLayersControl(
+    baseGroups = c("OSM", "Toner","Satellite","Shaded relief"),
+    overlayGroups = c("Forest 2000","Loss"),
+    options = layersControlOptions(collapsed = TRUE))
+    
+m  
+```
